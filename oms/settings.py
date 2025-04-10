@@ -34,6 +34,7 @@ DEBUG = True
 AUTH_USER_MODEL = 'users.CustomUser'
 LOGIN_REDIRECT_URL = '/tickets/create/'     # 登录成功跳转路径
 LOGIN_URL = '/users/login/'          # 未登录用户跳转路径
+PASSWORD_CHANGE_REDIRECT_URL = '/tickets'
 
 ALLOWED_HOSTS = ['172.16.10.147','localhost']
 

@@ -42,12 +42,15 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <div class="navbar-nav ms-auto">
-		    <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center">
-                        {% csrf_token %}
-                        <button type="submit" class="nav-link btn btn-link"
-                                style="cursor: pointer; border:none; background:none">
-                            <i class="bi bi-box-arrow-right me-1"></i>安全退出
-                        </button>
+                    <a class="nav-link" href="{% url 'change_password' %}">
+                        <i class="bi bi-key me-1"></i>更改密码
+                    </a>
+        		    <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center">
+                                {% csrf_token %}
+                                <button type="submit" class="nav-link btn btn-link"
+                                        style="cursor: pointer; border:none; background:none">
+                                    <i class="bi bi-box-arrow-right me-1"></i>安全退出
+                                </button>
                     </form>
                 </div>
             </div>
@@ -55,6 +58,14 @@
     </nav>
 
     <div class="container mt-3 mt-md-4">
+        {% if messages %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {% for message in messages %}
+            {{ message }}
+            {% endfor %}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </div>
 
