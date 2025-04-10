@@ -1,0 +1,4 @@
+python manage.py makemigrations 
+505  python manage.py migrate
+  506  python manage.py createsuperuser
+  507  history 

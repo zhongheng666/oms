@@ -1,0 +1,530 @@
+{% load report_filters %}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地运维日报 - {{ query_date|date:"Y/m/d" }}</title>
+    <style>
+        :root {
+            /* 主色系 */
+            --primary: #1a56a5;
+            --primary-light: #e8f4ff;
+            --secondary: #4a89dc;
+            
+            /* 功能色 */
+            --accent: #ff7043;
+            --success: #5cb85c;
+            --warning: #f0ad4e;
+            --danger: #d9534f;
+            --info: #5bc0de;
+            
+            /* 中性色 */
+            --light: #f8fafc;
+            --dark: #2c3e50;
+            --gray: #95a5a6;
+            --border: #e1e6eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+            transition: background 0.3s ease;
+        }
+
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 头部区域 */
+        .report-header {
+            background: linear-gradient(135deg, var(--primary), #3a7bd5);
+            color: white;
+            padding: 2.5rem;
+            border-radius: 12px;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 10px 30px rgba(26, 86, 165, 0.3);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .report-header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+            transform: rotate(30deg);
+            z-index: -1;
+        }
+
+        .report-header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+
+        .report-header .subtitle {
+            position: absolute;
+            bottom: 1rem;
+            right: 1.5rem;
+            font-size: 0.85rem;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.15);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        /* 新版数据总览 - 横向滚动卡片 */
+        .stats-scroller {
+            margin: 2rem 0;
+            position: relative;
+        }
+        
+        .stats-scroller-container {
+            display: flex;
+            overflow-x: auto;
+            padding: 1rem 0;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            gap: 1rem;
+        }
+        
+        .stats-scroller-container::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+        
+        .stat-card {
+            flex: 0 0 280px;
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            border-top: 4px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-card.compact {
+            flex: 0 0 220px;
+            padding: 1.2rem;
+        }
+        
+        .stat-card.compact .value {
+            font-size: 1.5rem;
+        }
+
+        .stat-card h3 {
+            color: var(--gray);
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
+        }
+
+        .stat-card .trend {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin-top: auto;
+            align-self: flex-start;
+        }
+        
+        .trend.up {
+            background: rgba(92, 184, 92, 0.1);
+            color: var(--success);
+        }
+        
+        .trend.down {
+            background: rgba(217, 83, 79, 0.1);
+            color: var(--danger);
+        }
+        
+        .scroll-hint {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--primary);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            z-index: 2;
+        }
+
+        /* 部门数据卡片 */
+        .department-section {
+            margin-bottom: 3rem;
+        }
+
+        .department-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .department-card:hover {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        }
+
+        .department-header {
+            background: linear-gradient(to right, var(--primary-light), white);
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .department-header h2 {
+            color: var(--primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .department-badge {
+            background: linear-gradient(to right, var(--secondary), var(--accent));
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .department-content {
+            padding: 1.5rem;
+        }
+
+        /* 表格样式 */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.95rem;
+        }
+
+        .data-table thead th {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 1rem;
+            font-weight: 600;
+            text-align: left;
+            border-bottom: 2px solid var(--secondary);
+        }
+
+        .data-table tbody td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tbody tr:hover td {
+            background: rgba(74, 137, 220, 0.08);
+        }
+
+        .highlight-cell {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .total-row {
+            background: rgba(58, 142, 230, 0.08);
+            font-weight: 600;
+        }
+
+        .total-row td {
+            border-top: 2px solid var(--secondary);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .page-container {
+                padding: 15px;
+            }
+            
+            .report-header {
+                padding: 1.8rem 1.5rem;
+            }
+            
+            .report-header h1 {
+                font-size: 1.6rem;
+                padding-right: 100px;
+            }
+            
+            .stat-card {
+                flex: 0 0 240px;
+                padding: 1.2rem;
+            }
+            
+            .stat-card.compact {
+                flex: 0 0 180px;
+                padding: 1rem;
+            }
+            
+            .stat-card .value {
+                font-size: 1.5rem;
+            }
+            
+            .scroll-hint {
+                display: none;
+            }
+        }
+
+        /* 打印样式 */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+                font-size: 11pt;
+            }
+            
+            .page-container {
+                padding: 0;
+                max-width: 100%;
+            }
+            
+            .report-header {
+                background: none;
+                color: black;
+                padding: 0 0 1rem;
+                box-shadow: none;
+                border-bottom: 2px solid #333;
+                margin-bottom: 1rem;
+            }
+            
+            .stat-card, .department-card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                page-break-inside: avoid;
+            }
+            
+            .stats-scroller-container {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .stat-card {
+                flex: 1 1 200px;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+
+        /* 暗色模式 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary: #3a7bd5;
+                --primary-light: #1a365d;
+                --dark: #f8f9fa;
+                --light: #2d3748;
+                --border: #4a5568;
+                --gray: #a0aec0;
+            }
+            
+            body {
+                background: #1a202c;
+                color: var(--dark);
+            }
+            
+            .stat-card, .department-card {
+                background: #2d3748;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            }
+            
+            .data-table thead th {
+                background: #2d3748;
+            }
+            
+            .highlight-cell {
+                color: #ff8a65;
+            }
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .department-card {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .department-card:nth-child(2) { animation-delay: 0.1s; }
+        .department-card:nth-child(3) { animation-delay: 0.2s; }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- 报表头部 -->
+        <header class="report-header">
+            <p><h1>{{ query_date|date:"Y年m月d日" }} </h1></p>
+            <p><h1>本地运维日报</h1></p>
+            <div class="subtitle">
+                <span>生成时间：{% now "m-d H:i" %}</span>
+            </div>
+        </header>
+
+        <!-- 部门详细数据 -->
+        <section class="department-section">
+            {% for dept_name, dept_data in report_data.departments.items %}
+            <article class="department-card">
+                <div class="department-header">
+                    <h2>{{ dept_name }}</h2>
+                    <span class="department-badge">共 {{ dept_data.floors|length }} 个楼层</span>
+                </div>
+                
+                <div class="department-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>楼层</th>
+                                {% for st in service_types %}
+                                <th>{{ st.name }}</th>
+                                {% endfor %}
+                                <th>合计</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for floor_name, floor_data in dept_data.floors.items %}
+                            <tr>
+                                <td>{{ floor_name }}</td>
+                                {% for st in service_types %}
+                                <td class="highlight-cell">{{ floor_data.services|get_item:st.name }}</td>
+                                {% endfor %}
+                                <td>{{ floor_data.services|sum_values }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="total-row">
+                                <td>部门总计</td>
+                                {% for st in service_types %}
+                                <td>{{ dept_data.total.services|get_item:st.name }}</td>
+                                {% endfor %}
+                                <td class="highlight-cell">{{ dept_data.total.services|sum_values }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+        
+        <!-- 新版数据总览 -->
+        <div class="stats-scroller">
+            <div class="stats-scroller-container">
+                <div class="stat-card">
+                    <h3>总处理工单</h3>
+                    <div class="value">{{ report_data.total.services|sum_values }}</div>
+                    <!--<div class="trend up">↑ 较昨日增长 12%</div>-->
+                </div>
+                {% for st in service_types %}
+                <div class="stat-card compact">
+                    <h3>{{ st.name }}工单</h3>
+                    <div class="value">{{ report_data.total.services|get_item:st.name }}</div>
+                    <!--<div class="trend {% if forloop.counter|divisibleby:2 %}down{% else %}up{% endif %}">
+                        {% if forloop.counter|divisibleby:2 %}↓{% else %}↑{% endif %} 
+                        {% widthratio forloop.counter 1 5 %}%
+                    </div>-->
+                </div>
+                {% endfor %}
+            </div>
+            <div class="scroll-hint">→</div>
+        </div>
+
+        <footer class="no-print">
+            <p style="text-align: center; color: var(--gray); margin-top: 2rem; padding: 1.5rem 0; border-top: 1px solid var(--border);">
+                © {% now "Y" %} 本地运维管理系统 | 版本 1.2.0
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 平滑加载效果
+            document.body.style.opacity = '0';
+            setTimeout(() => {
+                document.body.style.transition = 'opacity 0.4s ease';
+                document.body.style.opacity = '1';
+            }, 50);
+            
+            // 卡片悬停效果
+            const cards = document.querySelectorAll('.stat-card, .department-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-3px)';
+                    card.style.boxShadow = '0 8px 15px rgba(0,0,0,0.1)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = '';
+                    card.style.boxShadow = '';
+                });
+            });
+            
+            // 自动隐藏滚动提示
+            const scroller = document.querySelector('.stats-scroller-container');
+            const hint = document.querySelector('.scroll-hint');
+            
+            if(scroller && hint) {
+                scroller.addEventListener('scroll', function() {
+                    const { scrollWidth, scrollLeft, clientWidth } = this;
+                    const isEnd = scrollWidth - scrollLeft <= clientWidth + 10;
+                    hint.style.display = isEnd ? 'none' : 'flex';
+                });
+                
+                // 初始检查
+                setTimeout(() => {
+                    const { scrollWidth, clientWidth } = scroller;
+                    hint.style.display = scrollWidth > clientWidth ? 'flex' : 'none';
+                }, 100);
+            }
+        });
+    </script>
+</body>
+</html>

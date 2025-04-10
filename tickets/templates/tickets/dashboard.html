@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>工单系统控制台</h1>
+<div class="user-info">
+    <p>欢迎 {{ user.name }}（{{ user.get_role_display }}）</p>
+</div>
+{% endblock %}

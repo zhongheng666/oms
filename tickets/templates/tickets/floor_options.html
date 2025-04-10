@@ -1,0 +1,5 @@
+<!-- <option value="">---------</option> -->
+{% for floor in floors %}
+<option value="{{ floor.id }}" {% if forloop.first %}selected{% endif %}>{{ floor.name }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
+{% endfor %}
+

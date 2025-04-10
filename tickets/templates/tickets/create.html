@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.8.0/font/bootstrap-icons.min.css">
+<style>
+    .card {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    .card-header {
+        padding: 1rem 1.5rem;
+    }
+    .form-floating>label {
+        padding: 1rem 1.75rem;
+    }
+    .form-control, .form-select {
+        height: calc(3.5rem + 2px);
+        padding: 1rem 1.75rem;
+        border-radius: 0.5rem;
+    }
+    textarea.form-control {
+        height: auto !important;
+        min-height: 120px;
+    }
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1.1rem;
+        border-radius: 0.5rem;
+    }
+    .btn-group-lg>.btn, .btn-lg {
+        padding: 0.75rem 1.5rem;
+    }
+    @media (max-width: 576px) {
+        .card-header h4 {
+            font-size: 1.25rem;
+        }
+        .form-floating>label, 
+        .form-control, 
+        .form-select {
+            padding: 0.75rem 1.25rem;
+        }
+        .btn-lg {
+            font-size: 1rem;
+        }
+    }
+    #message {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-clipboard-plus me-2"></i>新建工单</h4>
+                </div>
+                
+                <div class="card-body">
+                    <form id="ticketForm" method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- 固定信息 -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" 
+                                           value="{{ user.name }}" readonly>
+                                    <label>工程师</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    {{ form.date }}
+                                    <label>日期</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 部门楼层 -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label>部门</label>
+                                <div class="form-floating">
+                                    {{ form.department }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label>楼层</label>       
+                                <div class="form-floating">
+                                    {{ form.floor }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 服务故障 -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label>服务类型</label>
+                                <div class="form-floating">
+                                    {{ form.service_type }}
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="incidentField" style="display: none;">
+                                <label>故障类型</label> 
+                                <div class="form-floating">
+                                    {{ form.incident_type }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 问题描述 -->
+                        <div class="mb-3">
+                            <div class="form-floating">
+                                {{ form.issue }}
+                                <label>问题描述</label>
+                            </div>
+                        </div>
+
+                        <!-- 解决方法 -->
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                {{ form.solution }}
+                                <label>解决方法</label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-3 d-md-flex justify-content-md-end">
+                            <a href="{% url 'my_tickets' %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-list-task me-2"></i>查看工单
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-send-check me-2"></i>提交工单
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="message" class="mt-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function(){
+    // 初始化检查服务类型
+    checkServiceType();
+
+    // 部门变更事件
+    $('#id_department').change(function(){
+        const deptId = $(this).val();
+        if(deptId) {
+            $.ajax({
+                url: "{% url 'load_floors' %}",
+                data: {department: deptId},
+                beforeSend: function() {
+                    $('#id_floor').prop('disabled', true).html('<option value="">加载中...</option>');
+                },
+                success: function(data) {
+                    $('#id_floor').html(data).prop('disabled', false);
+                },
+                error: function() {
+                    $('#id_floor').html('<option value="">加载失败</option>');
+                    console.error('加载楼层失败');
+                }
+            });
+        }
+    });
+
+    // 服务类型变更事件
+    $('#id_service_type').change(checkServiceType);
+
+    function checkServiceType() {
+        const serviceId = $('#id_service_type').val();
+        const incidentField = $('#incidentField');
+        const incidentSelect = $('#id_incident_type');
+
+        if(serviceId) {
+            $.ajax({
+                url: "{% url 'load_incidents' %}",
+                data: {service_type: serviceId},
+                beforeSend: function() {
+                    incidentSelect.prop('disabled', true).html('<option value="">加载中...</option>');
+                },
+                success: function(data) {
+                    incidentSelect.html(data);
+                    const isTech = $('#id_service_type option:selected').text().includes('技术故障');
+
+                    if(isTech) {
+                        incidentField.show();
+                        incidentSelect.prop({'required': true, 'disabled': false});
+                        // 默认选中第一个（新增逻辑）
+                        if(incidentSelect.find('option').length > 1) {
+                            incidentSelect.val(incidentSelect.find('option:eq(1)').val());
+                        }
+                    } else {
+                        incidentField.hide();
+                        incidentSelect.prop({'required': false, 'disabled': true});
+                    }
+                },
+                error: function() {
+                    incidentSelect.html('<option value="">加载失败</option>');
+                    console.error('加载故障类型失败');
+                }
+            });
+        }
+    }
+
+    // 表单提交处理
+    $('#ticketForm').submit(function(e){
+        e.preventDefault();
+        const form = $(this);
+        const submitBtn = form.find('[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        // 显示加载状态
+        submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>提交中...');
+        
+        $.ajax({
+            type: "POST",
+            url: form.attr('action'),
+            data: form.serialize(),
+            success: function(response){
+                const messageDiv = $('#message');
+                messageDiv.html(`<div class="alert alert-${response.status} alert-dismissible fade show" role="alert">
+                    ${response.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`);
+
+                if(response.status === 'success'){
+                    form[0].reset();
+                    // 重置后重新加载默认值（关键修复）
+                    $('#id_department').trigger('change');
+                    setTimeout(checkServiceType, 500);
+                }
+            },
+            error: function(xhr){
+                $('#message').html(`<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    提交失败：${xhr.responseText || '服务器错误'}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`);
+            },
+            complete: function() {
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

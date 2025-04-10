@@ -1,0 +1,232 @@
+{% extends "admin/base_site.html" %}
+{% load report_filters %}
+
+{% block content %}
+<div class="report-container">
+    <h1>工单统计报告 - {{ query_date }}</h1>
+
+    {# 日期选择表单 #}
+    <div class="date-filter">
+        <form method="get">
+            <input type="date" name="date" value="{{ query_date }}" class="date-input">
+            <button type="submit" class="filter-button">筛选</button>
+        </form>
+    </div>
+
+    {# 主报表内容 #}
+    {% for dept_name, dept_data in report_data.departments.items %}
+    <div class="department-section">
+        <h2>{{ dept_name }}</h2>
+
+        {# 服务类型统计 #}
+        <div class="service-stats">
+            <h3>服务类型统计</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>楼层</th>
+                        {% for st in service_types %}
+                        <th>{{ st.name }}</th>
+                        {% endfor %}
+                        <th>小计</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for floor_name, floor_data in dept_data.floors.items %}
+                    <tr>
+                        <td>{{ floor_name }}</td>
+                        {% for st in service_types %}
+                        <td>{{ floor_data.services|get_item:st.name }}</td>
+                        {% endfor %}
+                        <td>{{ floor_data.services|sum_values }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td>部门总计</td>
+                        {% for st in service_types %}
+                        <td>{{ dept_data.total.services|get_item:st.name }}</td>
+                        {% endfor %}
+                        <td>{{ dept_data.total.services|sum_values }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {# 故障类型统计 #}
+        <div class="incident-stats">
+            <h3>故障类型统计</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>楼层</th>
+                        {% for it in incident_types %}
+                        <th>{{ it.name }}</th>
+                        {% endfor %}
+                        <th>小计</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for floor_name, floor_data in dept_data.floors.items %}
+                    <tr>
+                        <td>{{ floor_name }}</td>
+                        {% for it in incident_types %}
+                        <td>{{ floor_data.incidents|get_item:it.name }}</td>
+                        {% endfor %}
+                        <td>{{ floor_data.incidents|sum_values }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td>部门总计</td>
+                        {% for it in incident_types %}
+                        <td>{{ dept_data.total.incidents|get_item:it.name }}</td>
+                        {% endfor %}
+                        <td>{{ dept_data.total.incidents|sum_values }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    {# 全局总计 #}
+    <div class="grand-total">
+        <h2>全局统计汇总</h2>
+        
+        <div class="total-section">
+            <h3>服务类型总计</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        {% for st in service_types %}
+                        <th>{{ st.name }}</th>
+                        {% endfor %}
+                        <th>总计</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for st in service_types %}
+                        <td>{{ report_data.total.services|get_item:st.name }}</td>
+                        {% endfor %}
+                        <td>{{ report_data.total.services|sum_values }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="total-section">
+            <h3>故障类型总计</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        {% for it in incident_types %}
+                        <th>{{ it.name }}</th>
+                        {% endfor %}
+                        <th>总计</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for it in incident_types %}
+                        <td>{{ report_data.total.incidents|get_item:it.name }}</td>
+                        {% endfor %}
+                        <td>{{ report_data.total.incidents|sum_values }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.report-container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.date-filter {
+    margin-bottom: 30px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.date-filter .date-input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+.filter-button {
+    padding: 8px 20px;
+    background: #417690;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.filter-button:hover {
+    background: #305067;
+}
+
+.department-section {
+    margin-bottom: 40px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 20px;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.report-table th, 
+.report-table td {
+    padding: 12px;
+    text-align: center;
+    border: 1px solid #ddd;
+    min-width: 80px;
+}
+
+.report-table th {
+    background: #417690;
+    color: white;
+    font-weight: bold;
+}
+
+.total-row {
+    background-color: #f9f9f9;
+    font-weight: bold;
+}
+
+.grand-total {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #417690;
+}
+
+.total-section {
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #417690;
+    margin-bottom: 30px;
+}
+
+h2 {
+    color: #666;
+    margin: 25px 0;
+}
+
+h3 {
+    color: #888;
+    margin: 15px 0;
+}
+</style>
+{% endblock %}

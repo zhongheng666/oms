@@ -1,0 +1,140 @@
+{% load report_filters %}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运维日报 - {{ query_date|date:"Y/m/d" }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --light: #ecf0f1;
+        }
+
+        body {
+            font-family: "Helvetica Neue", sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .chart-box {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .department-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th {
+            background: var(--light);
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .highlight {
+            color: var(--secondary);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ query_date|date:"Y年m月d日" }} 运维日报</h1>
+        <p>生成时间：{{ now|date:"Y/m/d H:i" }}</p>
+    </div>
+
+    <!-- 核心统计图表 -->
+    <div class="chart-box">
+        <div id="mainChart" style="height:400px"></div>
+    </div>
+
+    <!-- 部门详细数据 -->
+    {% for dept_name, dept_data in report_data.departments.items %}
+    <div class="department-card">
+        <h2>{{ dept_name }} - 服务统计</h2>
+        
+        <table>
+            <tr>
+                <th>楼层</th>
+                {% for st in service_types %}
+                <th>{{ st.name }}</th>
+                {% endfor %}
+                <th>合计</th>
+            </tr>
+            {% for floor_name, floor_data in dept_data.floors.items %}
+            <tr>
+                <td>{{ floor_name }}</td>
+                {% for st in service_types %}
+                <td class="highlight">{{ floor_data.services|get_item:st.name }}</td>
+                {% endfor %}
+                <td>{{ floor_data.services|sum_values }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="background: var(--light);">
+                <td>部门总计</td>
+                {% for st in service_types %}
+                <td>{{ dept_data.total.services|get_item:st.name }}</td>
+                {% endfor %}
+                <td class="highlight">{{ dept_data.total.services|sum_values }}</td>
+            </tr>
+        </table>
+    </div>
+    {% endfor %}
+
+    <script>
+        // ECharts 图表初始化
+        const chartDom = document.getElementById('mainChart');
+        const myChart = echarts.init(chartDom);
+        
+        const option = {
+            tooltip: { trigger: 'item' },
+            series: [{
+                type: 'pie',
+                data: [
+                    {% for st in service_types %}
+                    { value: {{ report_data.total.services|get_item:st.name }}, name: '{{ st.name }}' },
+                    {% endfor %}
+                ],
+                radius: ['40%', '70%'],
+                label: { show: false }
+            }]
+        };
+        
+        myChart.setOption(option);
+        window.addEventListener('resize', () => myChart.resize());
+    </script>
+</body>
+</html>
+

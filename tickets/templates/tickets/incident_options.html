@@ -1,0 +1,4 @@
+<!-- <option value="">---------</option> -->
+{% for incident in incidents %}
+<option value="{{ incident.id }}" {% if default_selected and forloop.first %}selected{% endif %}>{{ incident.name }}</option>
+{% endfor %}
