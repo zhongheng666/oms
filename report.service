@@ -1,0 +1,15 @@
+[Unit]
+Description=OMS Auto Report Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/oms
+ExecStart=/usr/bin/python3 manage.py auto_report
+StandardOutput=file:/var/log/report.log
+StandardError=file:/var/log/report.log
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
