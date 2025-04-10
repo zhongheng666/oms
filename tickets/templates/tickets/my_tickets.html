@@ -3,6 +3,15 @@
 
 {% block content %}
 <div class="container mt-4">
+    <!-- 消息提示 -->
+    {% if messages %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {% for message in messages %}
+        {{ message }}
+        {% endfor %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
     <div class="card shadow">
         <div class="card-header bg-primary text-white">
             <h4 class="mb-0"><i class="bi bi-list-task me-2"></i>我的工单列表</h4>
@@ -19,8 +28,10 @@
                             <th>部门</th>
                             <th>楼层</th>
                             <th>服务类别</th>
+                            <th>故障类别</th>
                             <th>问题描述</th>
                             <th>解决方法</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -30,9 +41,46 @@
                             <td>{{ ticket.department.name }}</td>
                             <td>{{ ticket.floor.name }}</td>
                             <td>{{ ticket.service_type.name }}</td>
+                            <td>{{ ticket.incident_type.name }}</td>
                             <td>{{ ticket.issue }}</td>
                             <td>{{ ticket.solution }}</td>
+                            <td>
+                                <!-- <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#updateTicketModal{{ ticket.id }}">
+                                    <i class="bi bi-pencil"></i> 更新
+                                </button> -->
+                                <a href="{% url 'update_ticket' ticket.id %}" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-pencil"></i> 更新
+                                </a>
+                            </td>
                         </tr>
+                        <!-- 更新工单的模态框 -->
+                        <div class="modal fade" id="updateTicketModal{{ ticket.id }}" tabindex="-1" aria-labelledby="updateTicketModalLabel{{ ticket.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="updateTicketModalLabel{{ ticket.id }}">更新工单</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form id="updateTicketForm{{ ticket.id }}" method="post" action="{% url 'update_ticket' ticket.id %}">
+                                            {% csrf_token %}
+                                            <div class="mb-3">
+                                                <label for="issue{{ ticket.id }}" class="form-label">问题描述</label>
+                                                <textarea class="form-control" id="issue{{ ticket.id }}" name="issue" rows="3">{{ ticket.issue }}</textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="solution{{ ticket.id }}" class="form-label">解决方法</label>
+                                                <textarea class="form-control" id="solution{{ ticket.id }}" name="solution" rows="3">{{ ticket.solution }}</textarea>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                        <button type="submit" form="updateTicketForm{{ ticket.id }}" class="btn btn-primary">保存更改</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         {% endfor %}
                     </tbody>
                 </table>

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="bi bi-pencil me-2"></i>更新工单</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <!-- 部门 -->
+                <div class="mb-3">
+                    <label for="department" class="form-label">部门</label>
+                    <select class="form-select" id="department" name="department" required>
+                        <option value="">选择部门</option>
+                        {% for department in departments %}
+                        <option value="{{ department.id }}" {% if form_data.department == department.id %}selected{% endif %}>{{ department.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.department %}
+                    <div class="text-danger">{{ errors.department }}</div>
+                    {% endif %}
+                </div>
+                <!-- 楼层 -->
+                <div class="mb-3">
+                    <label for="floor" class="form-label">楼层</label>
+                    <select class="form-select" id="floor" name="floor" required>
+                        <option value="">选择楼层</option>
+                        {% for floor in floors %}
+                        <option value="{{ floor.id }}" {% if form_data.floor == floor.id %}selected{% endif %}>{{ floor.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.floor %}
+                    <div class="text-danger">{{ errors.floor }}</div>
+                    {% endif %}
+                </div>
+                <!-- 服务类型 -->
+                <div class="mb-3">
+                    <label for="service_type" class="form-label">服务类型</label>
+                    <select class="form-select" id="service_type" name="service_type" required>
+                        <option value="">选择服务类型</option>
+                        {% for service_type in service_types %}
+                        <option value="{{ service_type.id }}" {% if form_data.service_type == service_type.id %}selected{% endif %}>{{ service_type.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.service_type %}
+                    <div class="text-danger">{{ errors.service_type }}</div>
+                    {% endif %}
+                </div>
+                <!-- 故障类型 -->
+                <div class="mb-3" id="incidentField" style="display: none;">
+                    <label for="incident_type" class="form-label">故障类型</label>
+                    <select class="form-select" id="incident_type" name="incident_type">
+                        <option value="">选择故障类型</option>
+                        {% for incident_type in incident_types %}
+                        <option value="{{ incident_type.id }}" {% if form_data.incident_type == incident_type.id %}selected{% endif %}>{{ incident_type.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.incident_type %}
+                    <div class="text-danger">{{ errors.incident_type }}</div>
+                    {% endif %}
+                </div>
+                <!-- 问题描述 -->
+                <div class="mb-3">
+                    <label for="issue" class="form-label">问题描述</label>
+                    <textarea class="form-control" id="issue" name="issue" rows="3" required>{{ form_data.issue }}</textarea>
+                    {% if errors.issue %}
+                    <div class="text-danger">{{ errors.issue }}</div>
+                    {% endif %}
+                </div>
+                <!-- 解决方法 -->
+                <div class="mb-3">
+                    <label for="solution" class="form-label">解决方法</label>
+                    <textarea class="form-control" id="solution" name="solution" rows="3">{{ form_data.solution }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">保存更改</button>
+                <a href="{% url 'my_tickets' %}" class="btn btn-secondary">返回工单列表</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+$(document).ready(function(){
+    // 初始化检查服务类型
+    checkServiceType();
+    // 部门变更事件
+    $('#department').change(function(){
+        const deptId = $(this).val();
+        if(deptId) {
+            $.ajax({
+                url: "{% url 'load_floors' %}",
+                data: {department: deptId},
+                beforeSend: function() {
+                    $('#floor').prop('disabled', true).html('<option value="">加载中...</option>');
+                },
+                success: function(data) {
+                    $('#floor').html(data).prop('disabled', false);
+                },
+                error: function() {
+                    $('#floor').html('<option value="">加载失败</option>');
+                    console.error('加载楼层失败');
+                }
+            });
+        }
+    });
+    // 服务类型变更事件
+    $('#service_type').change(checkServiceType);
+    function checkServiceType() {
+        const serviceId = $('#service_type').val();
+        const incidentField = $('#incidentField');
+        const incidentSelect = $('#incident_type');
+        if(serviceId) {
+            $.ajax({
+                url: "{% url 'load_incidents' %}",
+                data: {service_type: serviceId},
+                beforeSend: function() {
+                    incidentSelect.prop('disabled', true).html('<option value="">加载中...</option>');
+                },
+                success: function(data) {
+                    incidentSelect.html(data);
+                    const isTech = $('#service_type option:selected').text().includes('技术故障');
+                    if(isTech) {
+                        incidentField.show();
+                        incidentSelect.prop({'required': true, 'disabled': false});
+                    } else {
+                        incidentField.hide();
+                        incidentSelect.prop({'required': false, 'disabled': true});
+                    }
+                },
+                error: function() {
+                    incidentSelect.html('<option value="">加载失败</option>');
+                    console.error('加载故障类型失败');
+                }
+            });
+        }
+    }
+});
+</script>
+{% endblock %}
